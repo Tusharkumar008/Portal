@@ -1,0 +1,40 @@
+import type { BlogPost } from '@/types';
+
+export const blogPosts: BlogPost[] = [
+  {
+    id: '1',
+    title: 'How to write a resume that gets noticed',
+    excerpt: 'Learn the key strategies to make your resume stand out in a competitive job market.',
+    content: '',
+    author: 'Sarah Chen',
+    authorAvatar: '/images/avatars/sarah.jpg',
+    publishedAt: '2026-02-05T10:00:00Z',
+    readTime: 6,
+    image: '/images/blog/resume.jpg',
+    tags: ['Career', 'Resume', 'Job Search'],
+  },
+  {
+    id: '2',
+    title: 'Remote interview tips from hiring managers',
+    excerpt: 'Insider advice on how to ace your virtual interviews and make a lasting impression.',
+    content: '',
+    author: 'James Wilson',
+    authorAvatar: '/images/avatars/james.jpg',
+    publishedAt: '2026-02-03T14:30:00Z',
+    readTime: 5,
+    image: '/images/blog/interview.jpg',
+    tags: ['Interview', 'Remote Work', 'Career'],
+  },
+  {
+    id: '3',
+    title: 'Salary negotiation without the stress',
+    excerpt: 'A step-by-step guide to negotiating your compensation with confidence.',
+    content: '',
+    author: 'Emily Rodriguez',
+    authorAvatar: '/images/avatars/emily.jpg',
+    publishedAt: '2026-01-30T09:15:00Z',
+    readTime: 7,
+    image: '/images/blog/salary.jpg',
+    tags: ['Salary', 'Negotiation', 'Career'],
+  },
+];

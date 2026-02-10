@@ -1,0 +1,56 @@
+import type { PricingPlan } from '@/types';
+
+export const pricingPlans: PricingPlan[] = [
+  {
+    id: '1',
+    name: 'Free',
+    description: 'Browse, save jobs, apply to 5 roles/month.',
+    monthlyPrice: 0,
+    yearlyPrice: 0,
+    features: [
+      'Browse all job listings',
+      'Save up to 10 jobs',
+      'Apply to 5 roles per month',
+      'Basic profile',
+      'Email notifications',
+    ],
+    highlighted: false,
+    cta: 'Get started',
+  },
+  {
+    id: '2',
+    name: 'Pro',
+    description: 'Unlimited applications, profile boost, priority alerts.',
+    monthlyPrice: 12,
+    yearlyPrice: 99,
+    features: [
+      'Everything in Free',
+      'Unlimited job applications',
+      'Profile boost to employers',
+      'Priority job alerts',
+      'Advanced search filters',
+      'Resume review',
+      'Salary insights',
+    ],
+    highlighted: true,
+    cta: 'Start free trial',
+  },
+  {
+    id: '3',
+    name: 'Teams',
+    description: 'Collaborate, share shortlists, and track pipeline.',
+    monthlyPrice: 49,
+    yearlyPrice: 499,
+    features: [
+      'Everything in Pro',
+      'Team collaboration',
+      'Shared shortlists',
+      'Application tracking',
+      'Team analytics',
+      'API access',
+      'Dedicated support',
+    ],
+    highlighted: false,
+    cta: 'Contact sales',
+  },
+];
