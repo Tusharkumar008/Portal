@@ -1,476 +1,520 @@
-import { motion } from 'framer-motion';
-import { useState } from 'react';
-import { 
-  Briefcase, 
-  Building2, 
-  MapPin, 
-  DollarSign, 
-  CheckCircle2,
-  ArrowRight,
-  Sparkles
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { jobService } from '../services/api';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Badge } from '../components/ui/badge';
+import { AlertCircle, CheckCircle2, Loader2, X } from 'lucide-react';
+import { Alert, AlertDescription } from '../components/ui/alert';
 
-const steps = [
-  { number: 1, title: 'Job Details', description: 'Basic information about the role' },
-  { number: 2, title: 'Requirements', description: 'Skills and qualifications needed' },
-  { number: 3, title: 'Company Info', description: 'About your organization' },
-];
+interface FormErrors {
+  [key: string]: string;
+}
 
-const jobTypes = ['Full-time', 'Part-time', 'Contract', 'Freelance', 'Internship'];
-const workModes = ['Remote', 'Hybrid', 'On-site'];
-const categories = ['Engineering', 'Design', 'Product', 'Marketing', 'Data', 'Operations', 'Sales', 'HR'];
-const experienceLevels = ['Entry Level', 'Mid Level', 'Senior Level', 'Lead', 'Executive'];
+const PostJobPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { token } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [skills, setSkills] = useState<string[]>([]);
+  const [skillInput, setSkillInput] = useState('');
 
-export function PostJobPage() {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    company_name: '',
+    location: '',
+    employment_type: '',
+    experience_required: '',
+    salary_min: '',
+    salary_max: '',
+    salary_disclosed: true,
+    skills_required: [] as string[],
+    job_description: '',
+    responsibilities: '',
+    qualifications: '',
+    number_of_openings: '1',
+    application_deadline: '',
+  });
 
-  const handleNext = () => {
-    if (currentStep < 3) {
-      setCurrentStep(currentStep + 1);
+  // Validation functions
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+
+    if (!formData.title.trim()) {
+      newErrors.title = 'Job title is required';
+    }
+    if (formData.title.length < 3) {
+      newErrors.title = 'Job title must be at least 3 characters';
+    }
+
+    if (!formData.company_name.trim()) {
+      newErrors.company_name = 'Company name is required';
+    }
+
+    if (!formData.location) {
+      newErrors.location = 'Job location is required';
+    }
+
+    if (!formData.employment_type) {
+      newErrors.employment_type = 'Employment type is required';
+    }
+
+    if (formData.experience_required === '') {
+      newErrors.experience_required = 'Experience required is required';
+    } else if (parseInt(formData.experience_required) < 0 || parseInt(formData.experience_required) > 70) {
+      newErrors.experience_required = 'Experience must be between 0 and 70 years';
+    }
+
+    if (formData.salary_disclosed) {
+      if (formData.salary_min === '' && formData.salary_max === '') {
+        newErrors.salary = 'Please enter min or max salary, or select "Not Disclosed"';
+      }
+      if (formData.salary_min && parseInt(formData.salary_min) < 0) {
+        newErrors.salary_min = 'Salary cannot be negative';
+      }
+      if (formData.salary_max && parseInt(formData.salary_max) < 0) {
+        newErrors.salary_max = 'Salary cannot be negative';
+      }
+      if (formData.salary_min && formData.salary_max && parseInt(formData.salary_min) > parseInt(formData.salary_max)) {
+        newErrors.salary = 'Minimum salary cannot be greater than maximum salary';
+      }
+    }
+
+    if (skills.length === 0) {
+      newErrors.skills_required = 'At least one skill is required';
+    }
+
+    if (!formData.job_description.trim() || formData.job_description.length < 50) {
+      newErrors.job_description = 'Job description must be at least 50 characters';
+    }
+
+    if (!formData.responsibilities.trim() || formData.responsibilities.length < 50) {
+      newErrors.responsibilities = 'Responsibilities must be at least 50 characters';
+    }
+
+    if (!formData.qualifications.trim() || formData.qualifications.length < 50) {
+      newErrors.qualifications = 'Qualifications must be at least 50 characters';
+    }
+
+    if (parseInt(formData.number_of_openings) < 1) {
+      newErrors.number_of_openings = 'Number of openings must be at least 1';
+    }
+
+    if (!formData.application_deadline) {
+      newErrors.application_deadline = 'Application deadline is required';
     } else {
-      setIsSubmitted(true);
+      const deadline = new Date(formData.application_deadline);
+      if (deadline <= new Date()) {
+        newErrors.application_deadline = 'Application deadline must be in the future';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
-  const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
-  if (isSubmitted) {
-    return (
-      <div className="min-h-screen bg-[#F6F7F9] pt-24 pb-16 flex items-center justify-center px-4">
-        <motion.div
-          className="max-w-md w-full bg-white rounded-3xl border border-gray-100 p-8 text-center"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          <motion.div
-            className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-100 flex items-center justify-center"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: 'spring' }}
-          >
-            <CheckCircle2 className="w-10 h-10 text-green-600" />
-          </motion.div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">Job Posted Successfully!</h2>
-          <p className="text-gray-600 mb-6">
-            Your job listing has been submitted for review. You'll receive an email confirmation shortly.
-          </p>
-          <div className="flex flex-col gap-3">
-            <Button 
-              className="bg-[#F05A44] hover:bg-[#e04d38] text-white"
-              onClick={() => window.location.href = '/jobs'}
-            >
-              View All Jobs
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={() => {
-                setIsSubmitted(false);
-                setCurrentStep(1);
-              }}
-            >
-              Post Another Job
-            </Button>
-          </div>
-        </motion.div>
-      </div>
-    );
-  }
+  const addSkill = () => {
+    const skill = skillInput.trim().toLowerCase();
+    if (skill && !skills.includes(skill)) {
+      const newSkills = [...skills, skill];
+      setSkills(newSkills);
+      setFormData(prev => ({ ...prev, skills_required: newSkills }));
+      setSkillInput('');
+      if (errors.skills_required) {
+        setErrors(prev => ({ ...prev, skills_required: '' }));
+      }
+    }
+  };
+
+  const removeSkill = (skill: string) => {
+    const newSkills = skills.filter(s => s !== skill);
+    setSkills(newSkills);
+    setFormData(prev => ({ ...prev, skills_required: newSkills }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const submitData = {
+        ...formData,
+        experience_required: parseInt(formData.experience_required),
+        salary_min: formData.salary_min ? parseInt(formData.salary_min) : null,
+        salary_max: formData.salary_max ? parseInt(formData.salary_max) : null,
+        number_of_openings: parseInt(formData.number_of_openings),
+        skills_required: skills,
+        application_deadline: new Date(formData.application_deadline).toISOString(),
+      };
+
+      await jobService.createJob(submitData, token!);
+      
+      setSuccess(true);
+      setTimeout(() => {
+        navigate('/recruit/jobs');
+      }, 2000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create job';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[#F6F7F9] pt-24 pb-16">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <motion.div
-          className="text-center mb-10"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <span className="inline-flex items-center gap-2 bg-[#F05A44]/10 text-[#F05A44] text-sm font-medium px-4 py-2 rounded-full mb-4">
-            <Sparkles className="w-4 h-4" />
-            For Employers
-          </span>
-          <h1 className="text-3xl lg:text-4xl font-bold text-[#0B1A3A] mb-3">
-            Post a <span className="text-[#F05A44]">job</span> in minutes
-          </h1>
-          <p className="text-gray-600 max-w-lg mx-auto">
-            Reach thousands of qualified candidates. Our AI-powered matching helps you find the perfect fit faster.
-          </p>
-        </motion.div>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Post a New Job</h1>
+          <p className="text-lg text-gray-600 mt-2">Fill in the job details below. Your job will be reviewed by our admin team before going live.</p>
+        </div>
 
-        {/* Progress Steps */}
-        <motion.div
-          className="mb-10"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
-          <div className="flex items-center justify-center">
-            {steps.map((step, index) => (
-              <div key={step.number} className="flex items-center">
-                <div className="flex flex-col items-center">
-                  <motion.div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm ${
-                      currentStep >= step.number
-                        ? 'bg-[#F05A44] text-white'
-                        : 'bg-gray-200 text-gray-500'
-                    }`}
-                    animate={{
-                      scale: currentStep === step.number ? 1.1 : 1,
-                    }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    {step.number}
-                  </motion.div>
-                  <span className={`text-xs mt-2 ${currentStep >= step.number ? 'text-gray-900 font-medium' : 'text-gray-400'}`}>
-                    {step.title}
-                  </span>
-                </div>
-                {index < steps.length - 1 && (
-                  <div className={`w-16 sm:w-24 h-0.5 mx-2 ${currentStep > step.number ? 'bg-[#F05A44]' : 'bg-gray-200'}`} />
-                )}
+        {success && (
+          <Alert className="mb-6 bg-green-50 border-green-200">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-700 ml-2">
+              Job submitted successfully! Awaiting admin approval. Redirecting to dashboard...
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {error && (
+          <Alert className="mb-6 bg-red-50 border-red-200">
+            <AlertCircle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-700 ml-2">{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Job Details</CardTitle>
+            <CardDescription>Provide comprehensive information about the job position</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Job Title */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Job Title <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="text"
+                  name="title"
+                  placeholder="e.g., Senior React Developer"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  className={errors.title ? 'border-red-500' : ''}
+                />
+                {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
               </div>
-            ))}
-          </div>
-        </motion.div>
 
-        {/* Form */}
-        <motion.div
-          className="bg-white rounded-3xl border border-gray-100 p-6 lg:p-10"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          {currentStep === 1 && (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-6"
-            >
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Job Details</h2>
-              
-              <div className="space-y-4">
+              {/* Company Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Company Name <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="text"
+                  name="company_name"
+                  placeholder="e.g., Acme Corporation"
+                  value={formData.company_name}
+                  onChange={handleInputChange}
+                  className={errors.company_name ? 'border-red-500' : ''}
+                />
+                {errors.company_name && <p className="text-red-500 text-sm mt-1">{errors.company_name}</p>}
+              </div>
+
+              {/* Location and Employment Type */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="title">Job Title *</Label>
-                  <Input
-                    id="title"
-                    placeholder="e.g., Senior Frontend Engineer"
-                    className="mt-1.5 h-12"
-                  />
-                </div>
-
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="category">Category *</Label>
-                    <Select>
-                      <SelectTrigger className="mt-1.5 h-12">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((cat) => (
-                          <SelectItem key={cat} value={cat.toLowerCase()}>{cat}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="experience">Experience Level *</Label>
-                    <Select>
-                      <SelectTrigger className="mt-1.5 h-12">
-                        <SelectValue placeholder="Select level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {experienceLevels.map((level) => (
-                          <SelectItem key={level} value={level.toLowerCase().replace(' ', '-')}>{level}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="type">Job Type *</Label>
-                    <Select>
-                      <SelectTrigger className="mt-1.5 h-12">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {jobTypes.map((type) => (
-                          <SelectItem key={type} value={type.toLowerCase().replace(' ', '-')}>{type}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="workMode">Work Mode *</Label>
-                    <Select>
-                      <SelectTrigger className="mt-1.5 h-12">
-                        <SelectValue placeholder="Select mode" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {workModes.map((mode) => (
-                          <SelectItem key={mode} value={mode.toLowerCase()}>{mode}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Job Location <span className="text-red-500">*</span>
+                  </label>
+                  <Select value={formData.location} onValueChange={(value) => handleSelectChange('location', value)}>
+                    <SelectTrigger className={errors.location ? 'border-red-500' : ''}>
+                      <SelectValue placeholder="Select location type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="on-site">On-site</SelectItem>
+                      <SelectItem value="remote">Remote</SelectItem>
+                      <SelectItem value="hybrid">Hybrid</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location}</p>}
                 </div>
 
                 <div>
-                  <Label htmlFor="location">Location *</Label>
-                  <div className="relative mt-1.5">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <Input
-                      id="location"
-                      placeholder="e.g., San Francisco, CA or Remote"
-                      className="pl-10 h-12"
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Employment Type <span className="text-red-500">*</span>
+                  </label>
+                  <Select value={formData.employment_type} onValueChange={(value) => handleSelectChange('employment_type', value)}>
+                    <SelectTrigger className={errors.employment_type ? 'border-red-500' : ''}>
+                      <SelectValue placeholder="Select employment type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="full-time">Full-time</SelectItem>
+                      <SelectItem value="part-time">Part-time</SelectItem>
+                      <SelectItem value="internship">Internship</SelectItem>
+                      <SelectItem value="contract">Contract</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.employment_type && <p className="text-red-500 text-sm mt-1">{errors.employment_type}</p>}
+                </div>
+              </div>
+
+              {/* Experience Required */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Years of Experience Required <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="number"
+                  name="experience_required"
+                  placeholder="e.g., 5"
+                  min="0"
+                  max="70"
+                  value={formData.experience_required}
+                  onChange={handleInputChange}
+                  className={errors.experience_required ? 'border-red-500' : ''}
+                />
+                {errors.experience_required && <p className="text-red-500 text-sm mt-1">{errors.experience_required}</p>}
+              </div>
+
+              {/* Salary Range */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Salary Range</label>
+                <div className="flex items-center gap-4 mb-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.salary_disclosed}
+                      onChange={(e) => {
+                        setFormData(prev => ({ ...prev, salary_disclosed: e.target.checked }));
+                        if (e.target.checked) {
+                          if (errors.salary_min) setErrors(prev => ({ ...prev, salary_min: '' }));
+                          if (errors.salary_max) setErrors(prev => ({ ...prev, salary_max: '' }));
+                        }
+                      }}
                     />
-                  </div>
+                    <span className="text-sm text-gray-600">Disclose salary</span>
+                  </label>
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="salaryMin">Salary Range (Min) *</Label>
-                    <div className="relative mt-1.5">
-                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                {formData.salary_disclosed && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-gray-600">Minimum Salary</label>
                       <Input
-                        id="salaryMin"
                         type="number"
-                        placeholder="80000"
-                        className="pl-10 h-12"
+                        name="salary_min"
+                        placeholder="Min salary"
+                        min="0"
+                        value={formData.salary_min}
+                        onChange={handleInputChange}
+                        className={errors.salary_min ? 'border-red-500' : ''}
                       />
+                      {errors.salary_min && <p className="text-red-500 text-sm mt-1">{errors.salary_min}</p>}
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Maximum Salary</label>
+                      <Input
+                        type="number"
+                        name="salary_max"
+                        placeholder="Max salary"
+                        min="0"
+                        value={formData.salary_max}
+                        onChange={handleInputChange}
+                        className={errors.salary_max ? 'border-red-500' : ''}
+                      />
+                      {errors.salary_max && <p className="text-red-500 text-sm mt-1">{errors.salary_max}</p>}
                     </div>
                   </div>
-                  <div>
-                    <Label htmlFor="salaryMax">Salary Range (Max) *</Label>
-                    <div className="relative mt-1.5">
-                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                      <Input
-                        id="salaryMax"
-                        type="number"
-                        placeholder="120000"
-                        className="pl-10 h-12"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="description">Job Description *</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Describe the role, responsibilities, and what makes this opportunity exciting..."
-                    className="mt-1.5 min-h-[150px]"
-                  />
-                </div>
+                )}
+                {errors.salary && <p className="text-red-500 text-sm mt-1">{errors.salary}</p>}
               </div>
-            </motion.div>
-          )}
 
-          {currentStep === 2 && (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-6"
-            >
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Requirements & Benefits</h2>
-              
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="requirements">Requirements *</Label>
-                  <Textarea
-                    id="requirements"
-                    placeholder="List the key requirements for this role (one per line)..."
-                    className="mt-1.5 min-h-[120px]"
-                  />
-                  <p className="text-sm text-gray-500 mt-1.5">Press Enter to add multiple requirements</p>
-                </div>
-
-                <div>
-                  <Label htmlFor="skills">Required Skills *</Label>
+              {/* Skills Required */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Required Skills <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-2 mb-2">
                   <Input
-                    id="skills"
-                    placeholder="e.g., React, TypeScript, Node.js (comma separated)"
-                    className="mt-1.5 h-12"
+                    type="text"
+                    placeholder="e.g., React, JavaScript..."
+                    value={skillInput}
+                    onChange={(e) => setSkillInput(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addSkill();
+                      }
+                    }}
                   />
+                  <Button type="button" onClick={addSkill} className="bg-blue-600 hover:bg-blue-700">
+                    Add
+                  </Button>
                 </div>
-
-                <div>
-                  <Label htmlFor="benefits">Benefits & Perks</Label>
-                  <Textarea
-                    id="benefits"
-                    placeholder="List the benefits you offer (one per line)..."
-                    className="mt-1.5 min-h-[120px]"
-                  />
-                </div>
-
-                <div>
-                  <Label>Popular Benefits</Label>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {['Health Insurance', 'Remote Work', 'Flexible Hours', '401(k)', 'Unlimited PTO', 'Home Office Stipend'].map((benefit) => (
-                      <Badge
-                        key={benefit}
-                        variant="secondary"
-                        className="cursor-pointer hover:bg-[#F05A44]/10 hover:text-[#F05A44] transition-colors"
-                      >
-                        + {benefit}
+                {skills.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {skills.map(skill => (
+                      <Badge key={skill} className="bg-blue-100 text-blue-800">
+                        {skill}
+                        <button
+                          type="button"
+                          onClick={() => removeSkill(skill)}
+                          className="ml-2 text-blue-600 hover:text-blue-800"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
                       </Badge>
                     ))}
                   </div>
-                </div>
+                )}
+                {errors.skills_required && <p className="text-red-500 text-sm mt-1">{errors.skills_required}</p>}
               </div>
-            </motion.div>
-          )}
 
-          {currentStep === 3 && (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-6"
-            >
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Company Information</h2>
-              
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="companyName">Company Name *</Label>
-                  <div className="relative mt-1.5">
-                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <Input
-                      id="companyName"
-                      placeholder="Your company name"
-                      className="pl-10 h-12"
-                    />
-                  </div>
+              {/* Job Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Job Description <span className="text-red-500">*</span>
+                </label>
+                <Textarea
+                  name="job_description"
+                  placeholder="Describe the job position in detail..."
+                  rows={5}
+                  value={formData.job_description}
+                  onChange={handleInputChange}
+                  className={errors.job_description ? 'border-red-500' : ''}
+                />
+                <div className="text-sm text-gray-500 mt-1">
+                  {formData.job_description.length} / 5000 characters
                 </div>
-
-                <div>
-                  <Label htmlFor="companyWebsite">Company Website</Label>
-                  <Input
-                    id="companyWebsite"
-                    placeholder="https://yourcompany.com"
-                    className="mt-1.5 h-12"
-                  />
-                </div>
-
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="companySize">Company Size *</Label>
-                    <Select>
-                      <SelectTrigger className="mt-1.5 h-12">
-                        <SelectValue placeholder="Select size" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1-10">1-10 employees</SelectItem>
-                        <SelectItem value="11-50">11-50 employees</SelectItem>
-                        <SelectItem value="51-200">51-200 employees</SelectItem>
-                        <SelectItem value="201-500">201-500 employees</SelectItem>
-                        <SelectItem value="501+">501+ employees</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="industry">Industry *</Label>
-                    <Select>
-                      <SelectTrigger className="mt-1.5 h-12">
-                        <SelectValue placeholder="Select industry" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="technology">Technology</SelectItem>
-                        <SelectItem value="healthcare">Healthcare</SelectItem>
-                        <SelectItem value="finance">Finance</SelectItem>
-                        <SelectItem value="education">Education</SelectItem>
-                        <SelectItem value="retail">Retail</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="companyDescription">Company Description *</Label>
-                  <Textarea
-                    id="companyDescription"
-                    placeholder="Tell candidates about your company, mission, and culture..."
-                    className="mt-1.5 min-h-[120px]"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="recruiterEmail">Your Email *</Label>
-                  <div className="relative mt-1.5">
-                    <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <Input
-                      id="recruiterEmail"
-                      type="email"
-                      placeholder="you@company.com"
-                      className="pl-10 h-12"
-                    />
-                  </div>
-                  <p className="text-sm text-gray-500 mt-1.5">We'll send application notifications to this email</p>
-                </div>
+                {errors.job_description && <p className="text-red-500 text-sm mt-1">{errors.job_description}</p>}
               </div>
-            </motion.div>
-          )}
 
-          {/* Navigation Buttons */}
-          <div className="flex items-center justify-between mt-10 pt-6 border-t border-gray-100">
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              disabled={currentStep === 1}
-              className="h-12 px-6"
-            >
-              Back
-            </Button>
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button
-                onClick={handleNext}
-                className="h-12 px-8 bg-[#F05A44] hover:bg-[#e04d38] text-white"
-              >
-                {currentStep === 3 ? 'Post Job' : 'Continue'}
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </motion.div>
-          </div>
-        </motion.div>
+              {/* Responsibilities */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Responsibilities <span className="text-red-500">*</span>
+                </label>
+                <Textarea
+                  name="responsibilities"
+                  placeholder="List main responsibilities..."
+                  rows={5}
+                  value={formData.responsibilities}
+                  onChange={handleInputChange}
+                  className={errors.responsibilities ? 'border-red-500' : ''}
+                />
+                {errors.responsibilities && <p className="text-red-500 text-sm mt-1">{errors.responsibilities}</p>}
+              </div>
 
-        {/* Trust indicators */}
-        <motion.div
-          className="mt-10 text-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-        >
-          <p className="text-sm text-gray-500 mb-4">Trusted by leading companies</p>
-          <div className="flex justify-center gap-8 opacity-50">
-            {['TechFlow', 'Northwind', 'Pixelwise', 'Cloudcast'].map((company) => (
-              <span key={company} className="text-gray-400 font-semibold">{company}</span>
-            ))}
-          </div>
-        </motion.div>
+              {/* Qualifications */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Required Qualifications <span className="text-red-500">*</span>
+                </label>
+                <Textarea
+                  name="qualifications"
+                  placeholder="Describe required qualifications..."
+                  rows={5}
+                  value={formData.qualifications}
+                  onChange={handleInputChange}
+                  className={errors.qualifications ? 'border-red-500' : ''}
+                />
+                {errors.qualifications && <p className="text-red-500 text-sm mt-1">{errors.qualifications}</p>}
+              </div>
+
+              {/* Number of Openings */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Number of Openings <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="number"
+                  name="number_of_openings"
+                  placeholder="Number of positions available"
+                  min="1"
+                  value={formData.number_of_openings}
+                  onChange={handleInputChange}
+                  className={errors.number_of_openings ? 'border-red-500' : ''}
+                />
+                {errors.number_of_openings && <p className="text-red-500 text-sm mt-1">{errors.number_of_openings}</p>}
+              </div>
+
+              {/* Application Deadline */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Application Deadline <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="datetime-local"
+                  name="application_deadline"
+                  value={formData.application_deadline}
+                  onChange={handleInputChange}
+                  className={errors.application_deadline ? 'border-red-500' : ''}
+                />
+                {errors.application_deadline && <p className="text-red-500 text-sm mt-1">{errors.application_deadline}</p>}
+              </div>
+
+              {/* Submit Button */}
+              <div className="flex gap-4 pt-4">
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    'Post Job'
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate('/recruit/jobs')}
+                  disabled={loading}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
-}
+};
+
+export default PostJobPage;

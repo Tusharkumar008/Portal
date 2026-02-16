@@ -8,6 +8,11 @@ import { CompanyCard } from '@/components/ui-custom/CompanyCard';
 export function CompaniesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [, setIsLoading] = useState(false);
+  const [expandedCompanyId, setExpandedCompanyId] = useState<string | null>(null);
+
+  const handleToggleExpand = (companyId: string) => {
+    setExpandedCompanyId(prev => prev === companyId ? null : companyId);
+  };
 
   const filteredCompanies = useMemo(() => {
     if (!searchQuery) return companies;
@@ -127,8 +132,14 @@ export function CompaniesPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 + index * 0.05 }}
+                  layout
                 >
-                  <CompanyCard company={company} />
+                  <CompanyCard 
+                    company={company} 
+                    isExpanded={expandedCompanyId === company.id}
+                    onToggleExpand={handleToggleExpand}
+                    index={index}
+                  />
                 </motion.div>
               ))}
             </div>

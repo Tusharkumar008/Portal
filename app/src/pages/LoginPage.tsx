@@ -16,6 +16,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [role, setRole] = useState<'user' | 'recruiter' | 'admin'>('user');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,15 +30,11 @@ export function LoginPage() {
     setIsLoading(true);
 
     try {
-      const success = await login(email, password);
-      if (success) {
-        toast.success('Welcome back!');
-        navigate('/dashboard');
-      } else {
-        toast.error('Invalid email or password');
-      }
+      await login(email, password, role);
+      toast.success('Welcome back!');
+      navigate('/dashboard');
     } catch {
-      toast.error('Something went wrong. Please try again.');
+      toast.error('Invalid email or password');
     } finally {
       setIsLoading(false);
     }
@@ -89,6 +86,29 @@ export function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Role selector */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.35 }}
+            >
+              <Label htmlFor="role" className="text-gray-700">
+                Role
+              </Label>
+              <div className="relative mt-1.5">
+                <select
+                  id="role"
+                  value={role}
+                  onChange={e => setRole(e.target.value as 'user' | 'recruiter' | 'admin')}
+                  className="block w-full rounded-xl border-gray-200 h-12 pl-3 pr-8 focus-visible:ring-[#F05A44]"
+                  required
+                >
+                  <option value="user">User</option>
+                  <option value="recruiter">Recruiter</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            </motion.div>
             {/* Email */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -222,9 +242,11 @@ export function LoginPage() {
             <p className="text-sm text-gray-500 text-center">
               <span className="font-medium">Demo credentials:</span>
               <br />
-              Email: demo@example.com
+              User: user@example.com / password123
               <br />
-              Password: password123
+              Recruiter: recruiter@example.com / password123
+              <br />
+              Admin: admin@example.com / password123
             </p>
           </motion.div>
 

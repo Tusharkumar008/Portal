@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  User, 
+  User as UserIcon, 
   Briefcase, 
   Bookmark, 
   FileText, 
@@ -23,14 +23,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { currentUser } from '@/data';
-import type { JobApplication } from '@/types';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+import type { JobApplication, User } from '@/types';
+import { EditProfileDialog } from '@/components/ui-custom/EditProfileDialog';
 
 const statusConfig = {
   pending: { color: 'bg-yellow-100 text-yellow-700', icon: Clock, label: 'Pending' },
@@ -48,7 +42,14 @@ const formatDate = (dateString: string) => {
 
 export function DashboardPage() {
   const [activeTab, setActiveTab] = useState('overview');
-  const user = currentUser;
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [user, setUser] = useState<User>(currentUser);
+
+  const handleSaveProfile = (data: Partial<User>) => {
+    setUser(prev => ({ ...prev, ...data }));
+    // TODO: Connect to API when backend is ready
+    console.log('Profile updated:', data);
+  };
 
   return (
     <div className="min-h-screen bg-[#F6F7F9] pt-24 pb-16">
@@ -137,31 +138,25 @@ export function DashboardPage() {
                       <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0B1A3A] to-[#1a2d5c] flex items-center justify-center text-white text-2xl font-bold">
                         {user.name.charAt(0)}
                       </div>
-                      <div>
-                        <h3 className="text-xl font-semibold text-gray-900">{user.name}</h3>
-                        <p className="text-gray-500">{user.title}</p>
-                        <div className="flex items-center gap-2 mt-1 text-sm text-gray-400">
-                          <MapPin className="w-4 h-4" />
-                          {user.location}
-                        </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900">{user.name}</h3>
+                      <p className="text-gray-500">{user.title}</p>
+                      <div className="flex items-center gap-2 mt-1 text-sm text-gray-400">
+                        <MapPin className="w-4 h-4" />
+                        {user.location}
                       </div>
                     </div>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" size="sm" className="rounded-lg">
-                          <Edit3 className="w-4 h-4 mr-2" />
-                          Edit
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-lg">
-                        <DialogHeader>
-                          <DialogTitle>Edit Profile</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <p className="text-gray-500">Profile editing coming soon!</p>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="rounded-lg"
+                    onClick={() => setIsEditProfileOpen(true)}
+                  >
+                    <Edit3 className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+
                   </div>
 
                   <p className="text-gray-600 mb-6">{user.bio}</p>
@@ -382,7 +377,7 @@ export function DashboardPage() {
                       transition={{ delay: index * 0.1 }}
                     >
                       <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 flex-shrink-0">
-                        <User className="w-6 h-6" />
+                        <UserIcon className="w-6 h-6" />
                       </div>
                       <div>
                         <h4 className="font-semibold text-gray-900">{edu.degree}</h4>
@@ -425,6 +420,13 @@ export function DashboardPage() {
           </Tabs>
         </motion.div>
       </div>
+
+      <EditProfileDialog
+        user={user}
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+        onSave={handleSaveProfile}
+      />
     </div>
   );
 }

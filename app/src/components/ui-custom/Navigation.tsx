@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 const navLinks = [
-  { label: 'Jobs', href: '/jobs' },
+  // { label: 'Jobs', href: '/jobs' },
   { label: 'Companies', href: '/companies' },
 ];
 

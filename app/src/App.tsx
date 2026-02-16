@@ -6,30 +6,13 @@ import { LandingPage } from '@/pages/LandingPage';
 import { JobsPage } from '@/pages/JobsPage';
 import { CompaniesPage } from '@/pages/CompaniesPage';
 import { DashboardPage } from '@/pages/DashboardPage';
-import { PostJobPage } from '@/pages/PostJobPage';
+import PostJobPage from '@/pages/PostJobPage';
+import RecruiterDashboard from '@/pages/RecruiterDashboard';
 import { LoginPage } from '@/pages/LoginPage';
 import { SignupPage } from '@/pages/SignupPage';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Toaster } from '@/components/ui/sonner';
-
-// Protected Route Component
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F05A44]" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <>{children}</>;
-}
 
 // Public Route Component (redirects to dashboard if already logged in)
 function PublicRoute({ children }: { children: React.ReactNode }) {
@@ -88,11 +71,21 @@ function AppContent() {
               </ProtectedRoute>
             } 
           />
+          
+          {/* Recruiter Routes */}
           <Route 
             path="/post-job" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requireRole="recruiter">
                 <PostJobPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/recruit/jobs" 
+            element={
+              <ProtectedRoute requireRole="recruiter">
+                <RecruiterDashboard />
               </ProtectedRoute>
             } 
           />

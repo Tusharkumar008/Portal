@@ -33,6 +33,16 @@ export interface Company {
   founded: string;
 }
 
+export interface Employee {
+  id: string;
+  name: string;
+  avatar: string;
+  title: string;
+  department: string;
+  companyId: string;
+  profileUrl?: string;
+}
+
 export interface User {
   id: string;
   name: string;

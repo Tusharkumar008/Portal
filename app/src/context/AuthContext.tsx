@@ -1,105 +1,83 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { authService } from '../services/api';
 
 export interface User {
   id: string;
-  name: string;
   email: string;
-  avatar?: string;
-  title?: string;
+  role: "user" | "recruiter" | "admin";
+  name?: string;
 }
 
 interface AuthContextType {
   user: User | null;
+  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  signup: (name: string, email: string, password: string) => Promise<boolean>;
+  error: string | null;
+  login: (email: string, password: string, role?: string) => Promise<void>;
   logout: () => void;
+  isRecruiter: boolean;
+  isAdmin: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Mock users database (in real app, this would be backend)
-const MOCK_USERS: { email: string; password: string; user: User }[] = [
-  {
-    email: 'demo@example.com',
-    password: 'password123',
-    user: {
-      id: '1',
-      name: 'Alex Morgan',
-      email: 'demo@example.com',
-      title: 'Senior Product Designer',
-    },
-  },
-];
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Check for saved session on mount
   useEffect(() => {
-    const savedUser = localStorage.getItem('jobportal_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+    const savedToken = authService.getToken();
+    const savedUser = authService.getUser();
+    
+    if (savedToken && savedUser) {
+      setToken(savedToken);
+      setUser(savedUser);
     }
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    const foundUser = MOCK_USERS.find(
-      (u) => u.email === email && u.password === password
-    );
-
-    if (foundUser) {
-      setUser(foundUser.user);
-      localStorage.setItem('jobportal_user', JSON.stringify(foundUser.user));
-      return true;
+  const login = async (email: string, password: string, role: string = "user"): Promise<void> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await authService.login(email, password, role);
+      authService.setToken(response.access_token);
+      authService.setUser(response.user);
+      setToken(response.access_token);
+      setUser(response.user);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Login failed";
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
     }
-
-    return false;
-  };
-
-  const signup = async (name: string, email: string, password: string): Promise<boolean> => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    // Check if user already exists
-    const existingUser = MOCK_USERS.find((u) => u.email === email);
-    if (existingUser) {
-      return false;
-    }
-
-    // Create new user
-    const newUser: User = {
-      id: Date.now().toString(),
-      name,
-      email,
-    };
-
-    MOCK_USERS.push({ email, password, user: newUser });
-    setUser(newUser);
-    localStorage.setItem('jobportal_user', JSON.stringify(newUser));
-    return true;
   };
 
   const logout = () => {
+    authService.logout();
     setUser(null);
-    localStorage.removeItem('jobportal_user');
+    setToken(null);
+    setError(null);
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        isAuthenticated: !!user,
+        token,
+        isAuthenticated: !!token && !!user,
         isLoading,
+        error,
         login,
-        signup,
         logout,
+        isRecruiter: user?.role === "recruiter",
+        isAdmin: user?.role === "admin",
       }}
     >
       {children}

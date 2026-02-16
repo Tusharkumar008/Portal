@@ -5,3 +5,4 @@ export * from './user';
 export * from './testimonials';
 export * from './blog';
 export * from './pricing';
+export * from './employees';
