@@ -76,10 +76,11 @@ function AppContent() {
           <Route 
             path="/post-job" 
             element={
-              <ProtectedRoute requireRole="recruiter">
+              <ProtectedRoute requireRecruiter={true}>
                 <PostJobPage />
               </ProtectedRoute>
             } 
+
           />
           <Route 
             path="/recruit/jobs" 
@@ -87,7 +88,8 @@ function AppContent() {
               <ProtectedRoute requireRole="recruiter">
                 <RecruiterDashboard />
               </ProtectedRoute>
-            } 
+            }
+             
           />
         </Routes>
       </PageTransition>

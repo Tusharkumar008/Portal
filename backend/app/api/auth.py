@@ -49,18 +49,7 @@ DEMO_USERS = {
 @router.post("/auth/login", response_model=LoginResponse, summary="User login")
 async def login(credentials: LoginRequest):
     print(f"[LOGIN ATTEMPT] email={credentials.email} password={credentials.password} role={credentials.role}")
-    """
-    Authenticate user and return access token.
-    
-    **Demo Users for Testing:**
-    - Recruiter: email: recruiter@example.com, password: password123
-    - Admin: email: admin@example.com, password: password123
-    - User: email: user@example.com, password: password123
-    
-    **Response:**
-    - JWT access token
-    - User information
-    """
+
     user = DEMO_USERS.get(credentials.email)
 
     if not user:

@@ -46,7 +46,7 @@ export const authService = {
   setToken: (token: string) => localStorage.setItem("token", token),
   setUser: (user: any) => localStorage.setItem("user", JSON.stringify(user)),
 };
-
+/* create Job
 /**
  * API service for job posting
  */
