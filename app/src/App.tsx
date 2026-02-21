@@ -13,6 +13,9 @@ import { SignupPage } from '@/pages/SignupPage';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Toaster } from '@/components/ui/sonner';
+import ScrollToTop from '@/components/ScrollToTop'; // Clean, single import!
+import ProfilePage from '@/pages/ProfilePage';
+import ChatPage from '@/pages/ChatPage';
 
 // Public Route Component (redirects to dashboard if already logged in)
 function PublicRoute({ children }: { children: React.ReactNode }) {
@@ -72,6 +75,18 @@ function AppContent() {
             } 
           />
           
+          {/* ADD YOUR NEW ROUTES RIGHT HERE 👇 */}
+          {/* Shared Protected Routes (Both Users & Recruiters can edit profiles and chat) */}
+          <Route 
+            path="/profile" 
+            element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} 
+          />
+          <Route 
+            path="/chat" 
+            element={<ProtectedRoute><ChatPage /></ProtectedRoute>} 
+          />
+          {/* END OF NEW ROUTES 👆 */}
+
           {/* Recruiter Routes */}
           <Route 
             path="/post-job" 
@@ -80,7 +95,17 @@ function AppContent() {
                 <PostJobPage />
               </ProtectedRoute>
             } 
-
+          />
+          
+          
+          {/* Recruiter Routes */}
+          <Route 
+            path="/post-job" 
+            element={
+              <ProtectedRoute requireRecruiter={true}>
+                <PostJobPage />
+              </ProtectedRoute>
+            } 
           />
           <Route 
             path="/recruit/jobs" 
@@ -88,8 +113,7 @@ function AppContent() {
               <ProtectedRoute requireRole="recruiter">
                 <RecruiterDashboard />
               </ProtectedRoute>
-            }
-             
+            } 
           />
         </Routes>
       </PageTransition>
@@ -102,6 +126,7 @@ function AppContent() {
 function App() {
   return (
     <Router>
+      <ScrollToTop /> {/* <--- Added right here inside the Router! */}
       <AuthProvider>
         <AppContent />
       </AuthProvider>

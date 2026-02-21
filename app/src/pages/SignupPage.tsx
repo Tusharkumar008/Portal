@@ -18,6 +18,7 @@ export function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [role, setRole] = useState<'user' | 'recruiter' | 'admin'>('user');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,10 +47,20 @@ export function SignupPage() {
     setIsLoading(true);
 
     try {
-      const success = await signup(name, email, password);
+      // We pass 'role' here to the AuthContext
+      const success = await signup(name, email, password, role);
+      
       if (success) {
         toast.success('Account created successfully!');
-        navigate('/dashboard');
+        
+        // Smart Routing! Send them to their specific dashboard based on the role they chose
+        if (role === 'admin') {
+          navigate('/admin/dashboard');
+        } else if (role === 'recruiter') {
+          navigate('/recruiter/dashboard');
+        } else {
+          navigate('/dashboard'); // Normal job seeker
+        }
       } else {
         toast.error('Email already exists');
       }
@@ -59,7 +70,7 @@ export function SignupPage() {
       setIsLoading(false);
     }
   };
-
+  
   return (
     <div className="min-h-screen bg-[#F6F7F9] flex items-center justify-center px-4 py-12">
       {/* Background decoration */}
@@ -104,7 +115,29 @@ export function SignupPage() {
               Join thousands of professionals finding their dream jobs
             </p>
           </div>
-
+          {/* Role selector */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.35 }}
+            >
+              <div className="flex w-full bg-gray-100 rounded-lg p-1 space-x-1">
+                {(['user', 'recruiter', 'admin'] as const).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRole(r)}
+                    className={`flex-1 py-2.5 text-sm font-medium rounded-md capitalize transition-all ${
+                      role === r 
+                        ? 'bg-white text-[#F05A44] shadow-sm' 
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Full Name */}
             <motion.div

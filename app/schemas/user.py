@@ -1,0 +1,28 @@
+from pydantic import BaseModel, EmailStr
+from typing import Optional
+import uuid
+from datetime import datetime
+
+class UserBase(BaseModel):
+    email: EmailStr
+    name: Optional[str] = None
+    role: str = "job_seeker"
+
+class UserCreate(UserBase):
+    password: str
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class User(UserBase):
+    id: str
+    created_at: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    user: User

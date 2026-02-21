@@ -32,9 +32,17 @@ export function LoginPage() {
     try {
       await login(email, password, role);
       toast.success('Welcome back!');
-      navigate('/dashboard');
+      
+      // Smart Routing! Send them to their specific dashboard
+      if (role === 'admin') {
+        navigate('/admin/dashboard');
+      } else if (role === 'recruiter') {
+        navigate('/recruiter/dashboard');
+      } else {
+        navigate('/dashboard'); // Normal job seeker
+      }
     } catch {
-      toast.error('Invalid email or password');
+      toast.error('Invalid email or password. Are you using the correct role?');
     } finally {
       setIsLoading(false);
     }
@@ -87,26 +95,27 @@ export function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Role selector */}
+            {/* Role selector (UPDATED) */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.35 }}
             >
-              <Label htmlFor="role" className="text-gray-700">
-                Role
-              </Label>
-              <div className="relative mt-1.5">
-                <select
-                  id="role"
-                  value={role}
-                  onChange={e => setRole(e.target.value as 'user' | 'recruiter' | 'admin')}
-                  className="block w-full rounded-xl border-gray-200 h-12 pl-3 pr-8 focus-visible:ring-[#F05A44]"
-                  required
-                >
-                  <option value="user">User</option>
-                  <option value="recruiter">Recruiter</option>
-                  <option value="admin">Admin</option>
-                </select>
+              <div className="flex w-full bg-gray-100 rounded-lg p-1 space-x-1">
+                {(['user', 'recruiter', 'admin'] as const).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRole(r)}
+                    className={`flex-1 py-2.5 text-sm font-medium rounded-md capitalize transition-all ${
+                      role === r 
+                        ? 'bg-white text-[#F05A44] shadow-sm' 
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {r}
+                  </button>
+                ))}
               </div>
             </motion.div>
             {/* Email */}

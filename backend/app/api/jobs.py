@@ -1,114 +1,23 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from datetime import datetime
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.security import get_recruiter_user, User
-from app.schemas.job import JobPostingCreate, JobPostingResponse
 from app.models.job_store import job_store
-from app.models.job import JobLocation, EmploymentType
+from app.schemas.job import JobCreate, JobResponse
 
 router = APIRouter(prefix="/api/v1/jobs", tags=["Jobs"])
-limiter = Limiter(key_func=get_remote_address)
 
-
-@router.post(
-    "",
-    response_model=JobPostingResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Post a new job",
-)
-@limiter.limit("10/hour")
+@router.post("", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
 async def create_job(
-    request: Request,
-    job_data: JobPostingCreate,
-    current_user: User = Depends(get_recruiter_user),
+    job: JobCreate, 
+    current_user: User = Depends(get_recruiter_user) # Only recruiters
 ):
-    """
-    Create a new job posting.
-    
-    **Requirements:**
-    - User must be authenticated
-    - User must have RECRUITER role
-    - Rate limit: 10 jobs per hour
-    
-    **Response:**
-    - Job is created with PENDING status
-    - Recruiter receives confirmation message
-    """
-    try:
-        # Prepare job data
-        job_dict = job_data.model_dump()
-        job_dict["location"] = job_data.location
-        job_dict["employment_type"] = job_data.employment_type
-        
-        # Create job with pending status
-        job = job_store.create_job(job_dict, recruiter_id=current_user.id)
-        
-        return JobPostingResponse(**job.to_dict())
-    
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to create job: {str(e)}"
-        )
+    """Create a new job posting"""
+    new_job = job_store.create_job(job)
+    if not new_job:
+        raise HTTPException(status_code=500, detail="Failed to create job")
+    return new_job
 
-
-@router.get(
-    "/my-jobs",
-    response_model=list[JobPostingResponse],
-    summary="Get recruiter's jobs"
-)
-async def get_my_jobs(current_user: User = Depends(get_recruiter_user)):
-    """
-    Get all jobs posted by the current recruiter.
-    
-    **Requirements:**
-    - User must be authenticated
-    - User must have RECRUITER role
-    
-    **Response:**
-    - List of all jobs posted by recruiter (pending, approved, rejected)
-    """
-    jobs = job_store.get_recruiter_jobs(current_user.id)
-    return [JobPostingResponse(**job.to_dict()) for job in jobs]
-
-
-@router.get(
-    "/{job_id}",
-    response_model=JobPostingResponse,
-    summary="Get job details"
-)
-async def get_job(job_id: str):
-    """
-    Get details of a specific job posting.
-    
-    **Access:**
-    - Public (only approved jobs)
-    - Recruiters can see their own pending/rejected jobs
-    """
-    job = job_store.get_job(job_id)
-    if not job:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found"
-        )
-    return JobPostingResponse(**job.to_dict())
-
-
-@router.get(
-    "",
-    response_model=list[JobPostingResponse],
-    summary="List all approved jobs"
-)
-async def list_jobs():
-    """
-    Get all approved job postings.
-    
-    **Access:** Public
-    
-    **Filters:**
-    - Only returns APPROVED jobs
-    """
-    jobs = job_store.get_all_approved_jobs()
-    return [JobPostingResponse(**job.to_dict()) for job in jobs]
+@router.get("", response_model=List[JobResponse])
+async def list_approved_jobs():
+    """List all active jobs"""
+    return job_store.get_all_approved_jobs()

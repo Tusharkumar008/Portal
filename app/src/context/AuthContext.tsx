@@ -4,7 +4,7 @@ import { authService } from '../services/api';
 export interface User {
   id: string;
   email: string;
-  role: "user" | "recruiter" | "admin";
+  role: "user" | "recruiter" | "admin" | "job_seeker";
   name?: string;
 }
 
@@ -15,6 +15,7 @@ interface AuthContextType {
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string, role?: string) => Promise<void>;
+  signup: (name: string, email: string, password: string, role?: string) => Promise<boolean>;
   logout: () => void;
   isRecruiter: boolean;
   isAdmin: boolean;
@@ -45,13 +46,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     
     try {
-      const response = await authService.login(email, password, role);
+      const response = await authService.login(email, password);
       authService.setToken(response.access_token);
       authService.setUser(response.user);
       setToken(response.access_token);
       setUser(response.user);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Login failed";
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const signup = async (name: string, email: string, password: string, role: string = "job_seeker"): Promise<boolean> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await authService.signup(name, email, password, role);
+      authService.setToken(response.access_token);
+      authService.setUser(response.user);
+      setToken(response.access_token);
+      setUser(response.user);
+      return true; // Tells the SignupPage that it succeeded
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Signup failed";
       setError(message);
       throw err;
     } finally {
@@ -75,8 +96,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         error,
         login,
+        signup,
         logout,
-        isRecruiter: user?.role === "recruiter",
+        isRecruiter: user?.role === "recruiter" || user?.role === "admin",
         isAdmin: user?.role === "admin",
       }}
     >

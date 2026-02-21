@@ -1,14 +1,31 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 /**
  * API service for authentication
  */
 export const authService = {
+  // Added Signup Function
+  signup: async (name: string, email: string, password: string, role: string = "job_seeker") => {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password, role }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Signup failed");
+    }
+
+    return response.json();
+  },
+
   login: async (email: string, password: string, role: string = "user") => {
     const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, role }),
+      // Added role to the body payload
+      body: JSON.stringify({ email, password, role }), 
     });
 
     if (!response.ok) {
@@ -20,8 +37,6 @@ export const authService = {
   },
 
   getCurrentUser: async (token: string) => {
-
-
     const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -32,7 +47,7 @@ export const authService = {
 
     return response.json();
   },
-
+  
   logout: () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -46,7 +61,7 @@ export const authService = {
   setToken: (token: string) => localStorage.setItem("token", token),
   setUser: (user: any) => localStorage.setItem("user", JSON.stringify(user)),
 };
-/* create Job
+
 /**
  * API service for job posting
  */

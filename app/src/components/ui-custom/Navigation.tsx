@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
-import { Briefcase, Menu, X, User, LogOut } from 'lucide-react';
+import { Briefcase, Menu, X, User, LogOut, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -21,7 +21,8 @@ export function Navigation() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
-  const { user, isAuthenticated, logout } = useAuth();
+  // Extracted isRecruiter here!
+  const { user, isAuthenticated, isRecruiter, logout } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -39,7 +40,8 @@ export function Navigation() {
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.96] }}
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        // Sticky header fixed!
+        className={`sticky top-0 left-0 right-0 z-50 transition-all duration-300 ${
           isScrolled ? 'py-3' : 'py-5'
         }`}
       >
@@ -89,10 +91,10 @@ export function Navigation() {
                 </Link>
               ))}
               {isAuthenticated && (
-                <Link to="/dashboard">
+                <Link to={isRecruiter ? "/recruit/jobs" : "/dashboard"}>
                   <motion.div
                     className={`relative px-4 py-2 text-sm font-medium rounded-full transition-colors ${
-                      isActive('/dashboard') 
+                      isActive(isRecruiter ? '/recruit/jobs' : '/dashboard') 
                         ? 'text-[#F05A44]' 
                         : 'text-gray-600 hover:text-gray-900'
                     }`}
@@ -100,7 +102,7 @@ export function Navigation() {
                     whileTap={{ scale: 0.98 }}
                   >
                     Dashboard
-                    {isActive('/dashboard') && (
+                    {isActive(isRecruiter ? '/recruit/jobs' : '/dashboard') && (
                       <motion.div
                         layoutId="activeNav"
                         className="absolute inset-0 bg-[#F05A44]/10 rounded-full"
@@ -116,15 +118,18 @@ export function Navigation() {
             <div className="hidden md:flex items-center gap-3">
               {isAuthenticated ? (
                 <>
-                  <Link to="/post-job">
-                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                      <Button 
-                        className="text-sm font-medium bg-[#F05A44] hover:bg-[#e04d38] text-white rounded-full px-5"
-                      >
-                        Post a job
-                      </Button>
-                    </motion.div>
-                  </Link>
+                  {/* Recruiter specific 'Post a Job' button */}
+                  {isRecruiter && (
+                    <Link to="/post-job">
+                      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                        <Button 
+                          className="text-sm font-medium bg-[#F05A44] hover:bg-[#e04d38] text-white rounded-full px-5"
+                        >
+                          Post a job
+                        </Button>
+                      </motion.div>
+                    </Link>
+                  )}
                   
                   {/* User Dropdown */}
                   <DropdownMenu>
@@ -142,11 +147,26 @@ export function Navigation() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
                       <DropdownMenuItem asChild>
-                        <Link to="/dashboard" className="cursor-pointer">
-                          <User className="w-4 h-4 mr-2" />
+                        <Link to={isRecruiter ? "/recruit/jobs" : "/dashboard"} className="cursor-pointer">
+                          <Briefcase className="w-4 h-4 mr-2" />
                           Dashboard
                         </Link>
                       </DropdownMenuItem>
+                      
+                      <DropdownMenuItem asChild>
+                        <Link to="/chat" className="cursor-pointer">
+                          <MessageSquare className="w-4 h-4 mr-2" />
+                          Messages
+                        </Link>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem asChild>
+                        <Link to="/profile" className="cursor-pointer">
+                          <User className="w-4 h-4 mr-2" />
+                          Edit Profile
+                        </Link>
+                      </DropdownMenuItem>
+
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={logout} className="cursor-pointer text-red-600">
                         <LogOut className="w-4 h-4 mr-2" />
@@ -235,10 +255,10 @@ export function Navigation() {
                   transition={{ delay: 0.1 }}
                 >
                   <Link
-                    to="/dashboard"
+                    to={isRecruiter ? "/recruit/jobs" : "/dashboard"}
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={`block px-4 py-3 rounded-xl text-base font-medium transition-colors ${
-                      isActive('/dashboard')
+                      isActive(isRecruiter ? '/recruit/jobs' : '/dashboard')
                         ? 'bg-[#F05A44]/10 text-[#F05A44]'
                         : 'text-gray-600 hover:bg-gray-50'
                     }`}
@@ -260,6 +280,18 @@ export function Navigation() {
                         <p className="text-sm text-gray-500">{user?.email}</p>
                       </div>
                     </div>
+                    <Link to="/chat" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Button variant="ghost" className="w-full justify-start">
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Messages
+                      </Button>
+                    </Link>
+                    <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Button variant="ghost" className="w-full justify-start">
+                        <User className="w-4 h-4 mr-2" />
+                        Edit Profile
+                      </Button>
+                    </Link>
                     <Button 
                       variant="ghost" 
                       className="w-full justify-start text-red-600"
